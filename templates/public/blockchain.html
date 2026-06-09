@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Blockchain Explorer — ArtisanTrace{% endblock %}
+{% block head %}
+<style>
+  .chain-status { border-radius:12px; padding:1rem 1.5rem; font-weight:600; font-size:1rem; }
+  .block-card { border:none; border-radius:12px; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.07);
+                transition:.2s; margin-bottom:.5rem; }
+  .block-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.12); }
+  .block-index { font-size:1.4rem; font-weight:800; color:var(--teal); font-family:'Consolas',monospace; }
+  .hash-text { font-family:'Consolas',monospace; font-size:.72rem; word-break:break-all; color:#64748b; }
+  .chain-arrow { text-align:center; color:#cbd5e1; font-size:1.4rem; line-height:1; margin: 2px 0; }
+  .badge-valid   { background:#dcfce7; color:#166534; }
+  .badge-invalid { background:#fee2e2; color:#991b1b; }
+  .genesis-badge { background:#e0f2f1; color:#0f766e; }
+  .field-label { color:#94a3b8; font-size:.78rem; text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  <!-- Header -->
+  <div class="text-center mb-5">
+    <i class="bi bi-link-45deg fs-1" style="color:var(--teal)"></i>
+    <h2 class="fw-bold mt-1 mb-1">Blockchain Explorer</h2>
+    <p class="text-muted">Every product filing is permanently recorded as a block in this tamper-proof chain.</p>
+
+    <!-- Chain status banner -->
+    {% if chain_valid %}
+    <div class="chain-status d-inline-flex align-items-center gap-2 mt-2"
+         style="background:#dcfce7; color:#166534;">
+      <i class="bi bi-shield-fill-check fs-5"></i>
+      Chain Integrity: VALID — All {{ total_blocks }} blocks verified ✓
+    </div>
+    {% else %}
+    <div class="chain-status d-inline-flex align-items-center gap-2 mt-2"
+         style="background:#fee2e2; color:#991b1b;">
+      <i class="bi bi-shield-fill-exclamation fs-5"></i>
+      Chain Integrity: COMPROMISED — Tampering detected!
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- What is blockchain? -->
+  <div class="row g-3 mb-5">
+    {% for icon, title, desc in [
+      ('bi-lock-fill',     'Tamper-Proof',    'Each block\'s hash covers all its data. Any change breaks the hash.'),
+      ('bi-link-45deg',    'Chained Blocks',  'Every block stores the previous block\'s hash, forming an unbreakable chain.'),
+      ('bi-eye-fill',      'Transparent',     'Anyone can inspect and verify the full chain at any time.'),
+    ] %}
+    <div class="col-md-4">
+      <div class="text-center p-3 rounded-4 h-100" style="background:#f1f5f9;">
+        <i class="{{ icon }} fs-2 mb-2 d-block" style="color:var(--teal)"></i>
+        <strong>{{ title }}</strong>
+        <p class="text-muted small mb-0 mt-1">{{ desc }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Block chain -->
+  {% if results %}
+  <h5 class="fw-bold mb-3"><i class="bi bi-boxes me-2" style="color:var(--teal)"></i>Block Chain ({{ total_blocks }} blocks)</h5>
+
+  {% for r in results %}
+  {% set block = r.block %}
+
+  <!-- Arrow connector (not before first block) -->
+  {% if not loop.first %}
+  <div class="chain-arrow">
+    <i class="bi bi-arrow-down-circle-fill" style="color:{% if r.link_ok %}#0d9488{% else %}#dc2626{% endif %}"></i>
+    <div class="small" style="color:{% if r.link_ok %}#0d9488{% else %}#dc2626{% endif %}; font-size:.7rem;">
+      {% if r.link_ok %}linked ✓{% else %}BROKEN LINK ✗{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="block-card p-4">
+    <div class="row align-items-start g-3">
+
+      <!-- Block number + status -->
+      <div class="col-auto text-center" style="min-width:80px;">
+        <div class="block-index">#{{ block.block_index }}</div>
+        {% if block.product_code == 'GENESIS' %}
+          <span class="badge genesis-badge mt-1">Genesis</span>
+        {% elif r.valid %}
+          <span class="badge badge-valid mt-1"><i class="bi bi-check-circle me-1"></i>Valid</span>
+        {% else %}
+          <span class="badge badge-invalid mt-1"><i class="bi bi-x-circle me-1"></i>Invalid</span>
+        {% endif %}
+      </div>
+
+      <!-- Block data -->
+      <div class="col">
+        <div class="row g-2">
+
+          {% if block.product_code == 'GENESIS' %}
+          <div class="col-12">
+            <div class="field-label">Message</div>
+            <div class="fw-semibold">ArtisanTrace Genesis Block — Chain Origin</div>
+          </div>
+          {% else %}
+          <div class="col-sm-4">
+            <div class="field-label">Product Code</div>
+            <span class="badge-code">{{ block.product_code }}</span>
+          </div>
+          <div class="col-sm-4">
+            <div class="field-label">Timestamp</div>
+            <div class="small">{{ block.timestamp[:19].replace('T',' ') }} UTC</div>
+          </div>
+          <div class="col-sm-4">
+            <div class="field-label">Product</div>
+            <div class="small fw-semibold">
+              {% if block.product %}{{ block.product.name }}{% else %}—{% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="col-12 mt-1">
+            <div class="field-label">Block Hash <span class="text-success">(SHA-256)</span></div>
+            <div class="hash-text">{{ block.block_hash }}</div>
+          </div>
+          <div class="col-12">
+            <div class="field-label">Previous Hash</div>
+            <div class="hash-text">{{ block.previous_hash }}</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-inbox fs-1"></i>
+    <p class="mt-3">No blocks yet. File a product to start the chain.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

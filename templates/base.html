@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ArtisanTrace{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --teal: #0d9488;
+      --teal-lt: #14b8a6;
+      --dark: #0f172a;
+      --card-dark: #1e293b;
+    }
+    body { background: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .navbar-brand span { color: var(--teal-lt); }
+    .btn-teal { background: var(--teal); color: #fff; border: none; }
+    .btn-teal:hover { background: #0f766e; color: #fff; }
+    .badge-code {
+      font-family: 'Consolas', monospace;
+      background: #e0f2f1; color: #0f766e;
+      padding: 3px 10px; border-radius: 4px;
+      font-size: .85rem; font-weight: 600; letter-spacing: 1px;
+    }
+    .flash-container { position: sticky; top: 70px; z-index: 1040; }
+    .nav-link.active { color: var(--teal) !important; font-weight: 600; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top" style="background: var(--dark);">
+  <div class="container">
+    <a class="navbar-brand fw-bold fs-4" href="{{ url_for('index') }}">
+      <i class="bi bi-box-seam-fill me-1" style="color:var(--teal-lt)"></i>
+      Artisan<span>Trace</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center gap-1">
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint=='index' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'query' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('public_query') }}">Query Product</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint=='browse' %}active{% endif %}" href="{{ url_for('browse') }}">Browse</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint=='blockchain_explorer' %}active{% endif %}" href="{{ url_for('blockchain_explorer') }}">
+            <i class="bi bi-link-45deg"></i> Blockchain
+          </a>
+        </li>
+        {% if current_user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link {% if 'admin' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">
+            <i class="bi bi-speedometer2"></i> Admin
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-danger" href="{{ url_for('admin_logout') }}">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+        </li>
+        {% else %}
+        <li class="nav-item ms-2">
+          <a class="btn btn-sm btn-teal px-3" href="{{ url_for('admin_login') }}">Admin Login</a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Flash messages -->
+<div class="flash-container">
+  <div class="container mt-2">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show py-2 shadow-sm" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+</div>
+
+{% block content %}{% endblock %}
+
+<footer class="mt-5 py-4" style="background:var(--dark); color:#64748b;">
+  <div class="container text-center">
+    <p class="mb-1"><strong style="color:var(--teal-lt)">ArtisanTrace</strong> — Handmade Product Traceability Platform</p>
+    <p class="mb-0 small">Web Application Development · Jingdezhen Ceramic University · 2026</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

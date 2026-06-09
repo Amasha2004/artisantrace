@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} — ArtisanTrace{% endblock %}
+{% block head %}
+<style>
+  .product-image-main { width:100%; height:320px; object-fit:cover; border-radius:12px; }
+  .thumb { width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer;
+           border:2px solid transparent; transition:.2s; }
+  .thumb.active, .thumb:hover { border-color: var(--teal); }
+  .info-table td:first-child { color:#64748b; width:140px; font-weight:500; }
+  .qr-img { width:140px; height:140px; border:3px solid #e2e8f0; border-radius:8px; padding:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('index') }}" class="text-decoration-none">Home</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('public_query') }}" class="text-decoration-none">Query</a></li>
+      <li class="breadcrumb-item active">{{ product.product_code }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <!-- Images -->
+    <div class="col-lg-5">
+      <img id="mainImg" src="{{ product.image1_url }}" class="product-image-main mb-3" alt="{{ product.name }}">
+      <div class="d-flex gap-2">
+        {% for url in [product.image1_url, product.image2_url, product.image3_url] %}
+        <img src="{{ url }}" class="thumb {% if loop.first %}active{% endif %}"
+             onclick="switchImg(this)" alt="Image {{ loop.index }}">
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="col-lg-7">
+      <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+        <span class="badge-code fs-6">{{ product.product_code }}</span>
+        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Verified</span>
+      </div>
+
+      <h2 class="fw-bold mb-1">{{ product.name }}</h2>
+      <p class="text-muted mb-3"><i class="bi bi-tag me-1"></i>{{ product.category }}</p>
+
+      <p class="mb-4">{{ product.description }}</p>
+
+      <table class="table info-table table-borderless mb-4">
+        <tr><td>Artisan</td><td class="fw-semibold">{{ product.artisan_name }}</td></tr>
+        <tr><td>Origin</td><td>{{ product.origin }}</td></tr>
+        <tr><td>Price</td><td class="fw-bold" style="color:var(--teal)">¥{{ '%.2f'|format(product.price) }}</td></tr>
+        <tr><td>Filed On</td><td>{{ product.filed_at.strftime('%B %d, %Y at %H:%M UTC') }}</td></tr>
+        <tr><td>Total Queries</td><td>{{ product.query_count }} times</td></tr>
+      </table>
+
+      <!-- QR Code -->
+      {% if product.qr_url %}
+      <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background:#f1f5f9;">
+        <img src="{{ product.qr_url }}" class="qr-img" alt="QR Code">
+        <div>
+          <div class="fw-semibold mb-1"><i class="bi bi-qr-code me-1"></i>Scan QR Code</div>
+          <p class="text-muted small mb-2">Scan to open this page on any device</p>
+          <a href="{{ product.qr_url }}" download="QR_{{ product.product_code }}.png"
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>Download QR
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="mt-3">
+        <a href="{{ url_for('public_query') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Query Another
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Authenticity banner -->
+  <div class="alert mt-5 d-flex align-items-center gap-3 rounded-4 border-0"
+       style="background:#ecfdf5; color:#065f46;">
+    <i class="bi bi-shield-fill-check fs-2" style="color:#059669;"></i>
+    <div>
+      <strong>Authenticity Confirmed</strong> — This product is officially filed in the ArtisanTrace system.
+      This query has been logged on {{ "now"|replace("now", "") }}{{ product.filed_at.strftime('%Y') }}.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchImg(el) {
+  document.getElementById('mainImg').src = el.src;
+  document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+{% endblock %}

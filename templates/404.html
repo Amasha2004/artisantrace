@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}404 — Page Not Found · ArtisanTrace{% endblock %}
+{% block head %}
+<style>
+  .error-hero { min-height: 70vh; display: flex; align-items: center; justify-content: center; }
+  .error-code { font-size: 8rem; font-weight: 900; line-height: 1;
+                background: linear-gradient(135deg, #0d9488, #0891b2);
+                -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .floating { animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-hero">
+  <div class="text-center px-3">
+    <div class="floating mb-2">
+      <i class="bi bi-box-seam" style="font-size:5rem; color:#0d9488;"></i>
+    </div>
+    <div class="error-code">404</div>
+    <h2 class="fw-bold mt-2 mb-2">Page Not Found</h2>
+    <p class="text-muted mb-4" style="max-width:420px; margin:auto;">
+      This product traceability record doesn't exist — or the page has moved.<br>
+      Double-check your product code or go back home.
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="{{ url_for('index') }}" class="btn btn-teal px-4">
+        <i class="bi bi-house me-2"></i>Go Home
+      </a>
+      <a href="{{ url_for('public_query') }}" class="btn btn-outline-secondary px-4">
+        <i class="bi bi-search me-2"></i>Query a Product
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

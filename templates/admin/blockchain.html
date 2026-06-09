@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Blockchain — ArtisanTrace Admin{% endblock %}
+{% block head %}
+<style>
+  .hash-text { font-family:'Consolas',monospace; font-size:.72rem; word-break:break-all; }
+  .block-card { border:none; border-radius:10px; margin-bottom:.4rem; }
+  .badge-valid   { background:#dcfce7; color:#166534; }
+  .badge-invalid { background:#fee2e2; color:#991b1b; }
+  .data-json { font-family:'Consolas',monospace; font-size:.75rem; background:#0f172a;
+               color:#14b8a6; padding:.75rem 1rem; border-radius:8px; white-space:pre-wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="bi bi-link-45deg me-2" style="color:var(--teal)"></i>Blockchain Ledger</h3>
+      <p class="text-muted small mb-0">Immutable record of all product filings</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      {% if chain_valid %}
+      <span class="badge px-3 py-2 fs-6" style="background:#dcfce7;color:#166534;">
+        <i class="bi bi-shield-fill-check me-1"></i>Chain Valid — {{ total_blocks }} blocks
+      </span>
+      {% else %}
+      <span class="badge px-3 py-2 fs-6" style="background:#fee2e2;color:#991b1b;">
+        <i class="bi bi-shield-fill-exclamation me-1"></i>Chain Compromised!
+      </span>
+      {% endif %}
+      <a href="{{ url_for('blockchain_explorer') }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+        <i class="bi bi-globe me-1"></i>Public View
+      </a>
+    </div>
+  </div>
+
+  {% for r in results %}
+  {% set block = r.block %}
+  <div class="card block-card shadow-sm">
+    <div class="card-header d-flex align-items-center gap-3 py-2"
+         style="background:{% if block.product_code=='GENESIS' %}#f1f5f9{% elif r.valid %}#f0fdf4{% else %}#fef2f2{% endif %};">
+      <span class="fw-bold" style="font-family:Consolas;font-size:1rem;color:var(--teal)">
+        Block #{{ block.block_index }}
+      </span>
+      {% if block.product_code == 'GENESIS' %}
+        <span class="badge" style="background:#e0f2f1;color:#0f766e;">Genesis</span>
+      {% elif r.valid %}
+        <span class="badge badge-valid"><i class="bi bi-check-circle me-1"></i>Valid</span>
+      {% else %}
+        <span class="badge badge-invalid"><i class="bi bi-x-circle me-1"></i>INVALID</span>
+      {% endif %}
+      <span class="text-muted small ms-auto">
+        {% if not r.hash_ok %}<span class="text-danger me-3">⚠ Hash mismatch</span>{% endif %}
+        {% if not r.link_ok %}<span class="text-danger me-3">⚠ Broken link to previous</span>{% endif %}
+        {{ block.timestamp[:19].replace('T',' ') }} UTC
+      </span>
+      <button class="btn btn-sm btn-outline-secondary" type="button"
+              data-bs-toggle="collapse" data-bs-target="#block{{ block.id }}">
+        Details
+      </button>
+    </div>
+
+    <div class="collapse" id="block{{ block.id }}">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <table class="table table-borderless table-sm mb-0">
+              <tr>
+                <td class="text-muted" style="width:130px">Index</td>
+                <td><strong>#{{ block.block_index }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Product Code</td>
+                <td><span class="badge-code">{{ block.product_code }}</span></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Timestamp</td>
+                <td class="small">{{ block.timestamp }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Hash Valid</td>
+                <td>{% if r.hash_ok %}<span class="text-success fw-bold">✓ Yes</span>{% else %}<span class="text-danger fw-bold">✗ No</span>{% endif %}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Link Valid</td>
+                <td>{% if r.link_ok %}<span class="text-success fw-bold">✓ Yes</span>{% else %}<span class="text-danger fw-bold">✗ No</span>{% endif %}</td>
+              </tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-2">
+              <div class="text-muted small fw-bold mb-1">BLOCK HASH (SHA-256)</div>
+              <div class="hash-text" style="color:#0d9488;">{{ block.block_hash }}</div>
+            </div>
+            <div>
+              <div class="text-muted small fw-bold mb-1">PREVIOUS HASH</div>
+              <div class="hash-text text-muted">{{ block.previous_hash }}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="text-muted small fw-bold mb-1">DATA PAYLOAD (JSON)</div>
+            <div class="data-json">{{ block.data | tojson(indent=2) if block.data is mapping else block.data }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-inbox fs-1"></i>
+    <p class="mt-2">No blocks in chain yet.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

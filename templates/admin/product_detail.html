@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} — Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <a href="{{ url_for('admin_products') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h3 class="fw-bold mb-0">{{ product.name }}</h3>
+    <span class="badge-code fs-6">{{ product.product_code }}</span>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{{ url_for('public_query_result', code=product.product_code) }}"
+         class="btn btn-sm btn-outline-secondary" target="_blank">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Public View
+      </a>
+      <form method="post" action="{{ url_for('admin_delete_product', product_id=product.id) }}"
+            onsubmit="return confirm('Delete this product? Cannot be undone.')">
+        <button class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Product info -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h6 class="text-uppercase fw-bold mb-3" style="color:var(--teal);font-size:.78rem;letter-spacing:1px;">
+          Product Details
+        </h6>
+        <table class="table table-borderless mb-0">
+          <tr><td class="text-muted" style="width:140px">Code</td>
+              <td><span class="badge-code">{{ product.product_code }}</span></td></tr>
+          <tr><td class="text-muted">Category</td><td>{{ product.category }}</td></tr>
+          <tr><td class="text-muted">Artisan</td><td class="fw-semibold">{{ product.artisan_name }}</td></tr>
+          <tr><td class="text-muted">Origin</td><td>{{ product.origin }}</td></tr>
+          <tr><td class="text-muted">Price</td>
+              <td class="fw-bold" style="color:var(--teal)">¥{{ '%.2f'|format(product.price) }}</td></tr>
+          <tr><td class="text-muted">Filed At</td>
+              <td>{{ product.filed_at.strftime('%Y-%m-%d %H:%M UTC') }}</td></tr>
+          <tr><td class="text-muted">Total Queries</td>
+              <td class="fw-bold">{{ product.query_count }}</td></tr>
+        </table>
+        <hr>
+        <p class="mb-0 text-muted" style="font-size:.9rem;">{{ product.description }}</p>
+      </div>
+
+      <!-- Images -->
+      <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h6 class="text-uppercase fw-bold mb-3" style="color:var(--teal);font-size:.78rem;letter-spacing:1px;">
+          Product Images
+        </h6>
+        <div class="row g-2">
+          {% for url in [product.image1_url, product.image2_url, product.image3_url] %}
+          <div class="col-4">
+            <img src="{{ url }}" class="w-100 rounded-3" style="height:140px;object-fit:cover;" alt="Image {{ loop.index }}">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- QR + Query logs -->
+    <div class="col-lg-5">
+      {% if product.qr_url %}
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-center">
+        <h6 class="text-uppercase fw-bold mb-3" style="color:var(--teal);font-size:.78rem;letter-spacing:1px;">
+          QR Code
+        </h6>
+        <img src="{{ product.qr_url }}" style="width:160px;height:160px;border:3px solid #e2e8f0;border-radius:8px;padding:4px;">
+        <p class="text-muted small mt-2 mb-3">Scans to the public query page</p>
+        <a href="{{ product.qr_url }}" download="QR_{{ product.product_code }}.png"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-download me-1"></i>Download QR PNG
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 fw-bold pt-3 pb-0">
+          <i class="bi bi-clock-history me-1" style="color:var(--teal)"></i>
+          Query History ({{ logs|length }})
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0 small">
+            <thead class="table-light">
+              <tr><th>#</th><th>Date &amp; Time</th><th>IP</th></tr>
+            </thead>
+            <tbody>
+              {% for log in logs %}
+              <tr>
+                <td class="text-muted">{{ loop.index }}</td>
+                <td>{{ log.queried_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td class="text-muted">{{ log.ip_address or '—' }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted py-3">No queries yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

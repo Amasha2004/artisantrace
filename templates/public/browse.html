@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Browse Products — ArtisanTrace{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h2 class="fw-bold mb-1">Browse Products</h2>
+  <p class="text-muted mb-4">Search and explore all filed handmade products</p>
+
+  <!-- Search & filter -->
+  <form method="get" class="row g-2 mb-4">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control" placeholder="Search by name, artisan, origin, or code..."
+               value="{{ q }}">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select name="category" class="form-select">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-teal w-100">Filter</button>
+    </div>
+    {% if q or selected_category %}
+    <div class="col-md-1">
+      <a href="{{ url_for('browse') }}" class="btn btn-outline-secondary w-100" title="Clear">✕</a>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- Results -->
+  {% if products.items %}
+  <p class="text-muted small mb-3">{{ products.total }} product{{ 's' if products.total != 1 }} found</p>
+  <div class="row g-4">
+    {% for p in products.items %}
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100" style="transition:.2s;"
+           onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+        <img src="{{ p.image1_url }}" style="height:180px;object-fit:cover;" alt="{{ p.name }}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="badge-code">{{ p.product_code }}</span>
+            <span class="badge bg-light text-dark">{{ p.category }}</span>
+          </div>
+          <h6 class="fw-bold mt-2 mb-1">{{ p.name }}</h6>
+          <p class="text-muted small mb-1">{{ p.artisan_name }} · {{ p.origin }}</p>
+          <p class="fw-bold mb-3" style="color:var(--teal)">¥{{ '%.2f'|format(p.price) }}</p>
+          <a href="{{ url_for('public_query_result', code=p.product_code) }}"
+             class="btn btn-sm btn-teal w-100">View Details</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if products.pages > 1 %}
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if products.has_prev %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('browse', page=products.prev_num, q=q, category=selected_category) }}">‹ Prev</a>
+      </li>
+      {% endif %}
+      {% for p in products.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+        {% if p %}
+        <li class="page-item {% if p == products.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('browse', page=p, q=q, category=selected_category) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if products.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('browse', page=products.next_num, q=q, category=selected_category) }}">Next ›</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-inbox fs-1 text-muted"></i>
+    <p class="text-muted mt-3">No products found. <a href="{{ url_for('browse') }}">Clear filters</a></p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
