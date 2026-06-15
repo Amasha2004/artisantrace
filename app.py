@@ -473,6 +473,129 @@ def admin_blockchain():
                            chain_valid=chain_valid,
                            results=results,
                            total_blocks=total_blocks)
+@app.route('/admin/statistics')
+@login_required
+def admin_statistics():
+    return render_template('admin/statistics.html')
+
+# ── REST API ──────────────────────────────────────────────────────────────────
+
+@app.route('/api/products', methods=['GET'])
+def api_products():
+    """Return all products as JSON. Optional ?category= and ?q= filters."""
+    q        = request.args.get('q', '').strip()
+    category = request.args.get('category', '').strip()
+    query    = Product.query
+    if q:
+        query = query.filter(
+            db.or_(Product.name.ilike(f'%{q}%'),
+                   Product.artisan_name.ilike(f'%{q}%'),
+                   Product.origin.ilike(f'%{q}%'),
+                   Product.product_code.ilike(f'%{q}%'))
+        )
+    if category:
+        query = query.filter_by(category=category)
+    products = query.order_by(Product.filed_at.desc()).all()
+    return {
+        'status':  'ok',
+        'count':   len(products),
+        'products': [{
+            'product_code': p.product_code,
+            'name':         p.name,
+            'category':     p.category,
+            'artisan_name': p.artisan_name,
+            'origin':       p.origin,
+            'price':        p.price,
+            'filed_at':     p.filed_at.isoformat(),
+            'query_count':  p.query_count,
+            'image1_url':   p.image1_url,
+            'qr_url':       p.qr_url,
+        } for p in products]
+    }
+
+
+@app.route('/api/products/<code>', methods=['GET'])
+def api_product_detail(code):
+    """Return a single product by product code."""
+    product = Product.query.filter_by(product_code=code.upper()).first()
+    if not product:
+        return {'status': 'error', 'message': f'Product {code} not found'}, 404
+    return {
+        'status': 'ok',
+        'product': {
+            'product_code': product.product_code,
+            'name':         product.name,
+            'category':     product.category,
+            'artisan_name': product.artisan_name,
+            'origin':       product.origin,
+            'description':  product.description,
+            'price':        product.price,
+            'filed_at':     product.filed_at.isoformat(),
+            'query_count':  product.query_count,
+            'image1_url':   product.image1_url,
+            'image2_url':   product.image2_url,
+            'image3_url':   product.image3_url,
+            'qr_url':       product.qr_url,
+        }
+    }
+
+
+@app.route('/api/stats', methods=['GET'])
+def api_stats():
+    """Return dashboard statistics as JSON — used by charts."""
+    from datetime import timedelta
+
+    # Products per category
+    categories = db.session.query(
+        Product.category, db.func.count(Product.id)
+    ).group_by(Product.category).all()
+
+    # Queries per day (last 7 days)
+    today = datetime.utcnow().date()
+    daily_queries = []
+    for i in range(6, -1, -1):
+        day   = today - timedelta(days=i)
+        count = QueryLog.query.filter(
+            db.func.date(QueryLog.queried_at) == day
+        ).count()
+        daily_queries.append({'date': str(day), 'count': count})
+
+    # Top 5 most queried products
+    top = db.session.query(
+        Product.name, Product.product_code,
+        db.func.count(QueryLog.id).label('qcount')
+    ).join(QueryLog, isouter=True).group_by(Product.id)\
+     .order_by(db.desc('qcount')).limit(5).all()
+
+    return {
+        'status':        'ok',
+        'total_products': Product.query.count(),
+        'total_queries':  QueryLog.query.count(),
+        'total_blocks':   Block.query.count(),
+        'categories': [{'name': c[0], 'count': c[1]} for c in categories],
+        'daily_queries':  daily_queries,
+        'top_products': [{'name': t[0], 'code': t[1], 'queries': t[2] or 0} for t in top],
+    }
+
+
+@app.route('/api/blockchain', methods=['GET'])
+def api_blockchain():
+    """Return blockchain status and all blocks as JSON."""
+    chain_valid, results = verify_chain()
+    return {
+        'status':       'ok',
+        'chain_valid':  chain_valid,
+        'total_blocks': Block.query.count(),
+        'blocks': [{
+            'index':         r['block'].block_index,
+            'product_code':  r['block'].product_code,
+            'timestamp':     r['block'].timestamp,
+            'block_hash':    r['block'].block_hash,
+            'previous_hash': r['block'].previous_hash,
+            'hash_valid':    r['hash_ok'],
+            'link_valid':    r['link_ok'],
+        } for r in results]
+    }
 
 # ── Error handlers ────────────────────────────────────────────────────────────
 
