@@ -39,6 +39,17 @@
               <td class="fw-bold" style="color:var(--teal)">¥{{ '%.2f'|format(product.price) }}</td></tr>
           <tr><td class="text-muted">Filed At</td>
               <td>{{ product.filed_at.strftime('%Y-%m-%d %H:%M UTC') }}</td></tr>
+              {% if product.tx_hash %}
+              <tr>
+                <td class="text-muted">Ethereum TX</td>
+                <td>
+                  <span style="font-family:Consolas; font-size:.75rem; color:#0d9488; word-break:break-all;">
+                    {{ product.tx_hash }}
+                  </span>
+                  <span class="badge bg-success ms-2">On Blockchain</span>
+                </td>
+              </tr>
+              {% endif %}
           <tr><td class="text-muted">Total Queries</td>
               <td class="fw-bold">{{ product.query_count }}</td></tr>
         </table>

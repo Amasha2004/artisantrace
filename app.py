@@ -6,6 +6,26 @@ import qrcode
 from io import BytesIO
 from datetime import datetime
 from functools import wraps
+from web3 import Web3
+import json as json_module
+
+# Connect to Ganache blockchain
+w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))
+blockchain_account = w3.eth.accounts[0]
+
+# Load smart contract
+try:
+    with open('contract_info.json', 'r') as f:
+        contract_info = json_module.load(f)
+    artisan_contract = w3.eth.contract(
+        address=contract_info['address'],
+        abi=contract_info['abi']
+    )
+    BLOCKCHAIN_ENABLED = True
+    print('✓ Smart contract connected!')
+except:
+    BLOCKCHAIN_ENABLED = False
+    print('⚠ Smart contract not found — blockchain disabled')
 
 from flask import (Flask, render_template, request, redirect, url_for,
                    flash, send_from_directory, abort, session)
@@ -59,6 +79,7 @@ class Product(db.Model):
     image3_url = db.Column(db.String(300), nullable=False)
     qr_url = db.Column(db.String(300))
     filed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    tx_hash = db.Column(db.String(100))  # Ethereum transaction hash
     queries = db.relationship('QueryLog', backref='product', lazy=True,
                               cascade='all, delete-orphan')
 
@@ -414,8 +435,25 @@ def admin_file_product():
         product.qr_url = generate_qr(code)
         db.session.commit()
 
-        # Add product to blockchain
+        # Add product to our DB blockchain
         add_product_to_chain(product)
+
+        # Also record on Ethereum blockchain via Ganache
+        if BLOCKCHAIN_ENABLED:
+            try:
+                tx_hash = artisan_contract.functions.fileProduct(
+                    product.product_code,
+                    product.name,
+                    product.category,
+                    product.artisan_name,
+                    product.origin
+                ).transact({'from': blockchain_account})
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+                product.tx_hash = receipt.transactionHash.hex()
+                db.session.commit()
+                print(f'✓ Product filed on Ethereum: {product.tx_hash}')
+            except Exception as e:
+                print(f'⚠ Ethereum filing failed: {e}')
 
         flash(f'Product filed successfully! Code: {code} — Block added to chain ⛓️', 'success')
         return redirect(url_for('admin_product_detail', product_id=product.id))
