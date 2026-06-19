@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Buyer Login — ArtisanTrace{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:440px;">
+  <div class="card border-0 shadow-sm rounded-4 p-4">
+    <div class="text-center mb-4">
+      <i class="bi bi-person-circle fs-1" style="color:var(--teal)"></i>
+      <h3 class="fw-bold mt-2 mb-1">Buyer Login</h3>
+      <p class="text-muted small">Access your query history and saved products</p>
+    </div>
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Email Address</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+          <input type="email" name="email" class="form-control" placeholder="your@email.com" required autofocus>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Password</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-teal w-100 py-2 fw-semibold">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Login
+      </button>
+    </form>
+    <p class="text-center text-muted small mt-3 mb-0">
+      Don't have an account?
+      <a href="{{ url_for('buyer_register') }}" class="text-decoration-none" style="color:var(--teal)">Register here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

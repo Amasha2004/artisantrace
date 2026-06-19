@@ -1,3 +1,4 @@
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
 import hashlib
@@ -64,6 +65,27 @@ class Admin(UserMixin, db.Model):
     def set_password(self, pw): self.password_hash = generate_password_hash(pw)
     def check_password(self, pw): return check_password_hash(self.password_hash, pw)
 
+class Buyer(db.Model):
+    id            = db.Column(db.Integer, primary_key=True)
+    name          = db.Column(db.String(100), nullable=False)
+    email         = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    joined_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    queries       = db.relationship('QueryLog', backref='buyer', lazy=True)
+    saved_products = db.relationship('SavedProduct', backref='buyer',
+                                     lazy=True, cascade='all, delete-orphan')
+
+    def set_password(self, pw): self.password_hash = generate_password_hash(pw)
+    def check_password(self, pw): return check_password_hash(self.password_hash, pw)
+
+
+class SavedProduct(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    buyer_id   = db.Column(db.Integer, db.ForeignKey('buyer.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    saved_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    product    = db.relationship('Product', backref='saved_by')
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -95,6 +117,8 @@ class QueryLog(db.Model):
     queried_at = db.Column(db.DateTime, default=datetime.utcnow)
     ip_address = db.Column(db.String(50))
     user_agent = db.Column(db.String(300))
+    buyer_id = db.Column(db.Integer, db.ForeignKey('buyer.id'), nullable=True)
+    buyer_name = db.Column(db.String(100), nullable=True)
 
 
 class Block(db.Model):
@@ -129,6 +153,13 @@ class Block(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(Admin, int(user_id))
+
+def get_current_buyer():
+    """Get the currently logged-in buyer from session."""
+    buyer_id = session.get('buyer_id')
+    if buyer_id:
+        return db.session.get(Buyer, buyer_id)
+    return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -281,17 +312,31 @@ def public_query_result(code):
         flash(f'No product found with code "{code}".', 'danger')
         return render_template('public/query.html', not_found=True, searched_code=code)
 
-    # Log this query
+    # Get buyer once at the top
+    buyer = get_current_buyer()
+
+    # Log this query — include buyer info if logged in
     log = QueryLog(
         product_id=product.id,
         product_code=code,
         ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent', '')[:300]
+        user_agent=request.headers.get('User-Agent', '')[:300],
+        buyer_id=buyer.id if buyer else None,
+        buyer_name=buyer.name if buyer else None,
     )
     db.session.add(log)
     db.session.commit()
 
-    return render_template('public/result.html', product=product)
+    # Check if buyer saved this product
+    is_saved = False
+    if buyer:
+        is_saved = SavedProduct.query.filter_by(
+            buyer_id=buyer.id, product_id=product.id).first() is not None
+
+    return render_template('public/result.html',
+                           product=product,
+                           buyer=buyer,
+                           is_saved=is_saved)
 
 
 @app.route('/browse')
@@ -515,6 +560,163 @@ def admin_blockchain():
 @login_required
 def admin_statistics():
     return render_template('admin/statistics.html')
+
+# ── Buyer routes ──────────────────────────────────────────────────────────────
+
+@app.route('/buyer/register', methods=['GET', 'POST'])
+def buyer_register():
+    if get_current_buyer():
+        return redirect(url_for('buyer_dashboard'))
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm_password', '')
+
+        if not name or not email or not password:
+            flash('All fields are required.', 'danger')
+            return render_template('buyer/register.html')
+        if password != confirm:
+            flash('Passwords do not match.', 'danger')
+            return render_template('buyer/register.html')
+        if Buyer.query.filter_by(email=email).first():
+            flash('Email already registered. Please login.', 'warning')
+            return redirect(url_for('buyer_login'))
+
+        buyer = Buyer(name=name, email=email)
+        buyer.set_password(password)
+        db.session.add(buyer)
+        db.session.commit()
+
+        session['buyer_id'] = buyer.id
+        flash(f'Welcome, {name}! Your account has been created.', 'success')
+        return redirect(url_for('buyer_dashboard'))
+
+    return render_template('buyer/register.html')
+
+
+@app.route('/buyer/login', methods=['GET', 'POST'])
+def buyer_login():
+    if request.method == 'POST':
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        buyer    = Buyer.query.filter_by(email=email).first()
+
+        if buyer and buyer.check_password(password):
+            session.permanent = True
+            session['buyer_id'] = int(buyer.id)
+            print(f'✓ Buyer logged in: id={buyer.id} name={buyer.name}')
+            flash(f'Welcome back, {buyer.name}!', 'success')
+            return redirect(url_for('buyer_dashboard'))
+        flash('Invalid email or password.', 'danger')
+
+    return render_template('buyer/login.html')
+
+
+@app.route('/buyer/logout')
+def buyer_logout():
+    session.pop('buyer_id', None)
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('index'))
+
+
+@app.route('/buyer/dashboard')
+def buyer_dashboard():
+    buyer_id = session.get('buyer_id')
+    print(f'Dashboard session buyer_id: {buyer_id}')
+
+    if not buyer_id:
+        flash('Please login first.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    buyer = Buyer.query.filter_by(id=int(buyer_id)).first()
+    print(f'Dashboard buyer found: {buyer}')
+
+    if not buyer:
+        session.clear()
+        flash('Session expired. Please login again.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    recent_queries = QueryLog.query.filter_by(buyer_id=buyer.id)\
+                             .order_by(QueryLog.queried_at.desc()).limit(10).all()
+    saved = SavedProduct.query.filter_by(buyer_id=buyer.id)\
+                              .order_by(SavedProduct.saved_at.desc()).all()
+    return render_template('buyer/dashboard.html',
+                           buyer=buyer,
+                           recent_queries=recent_queries,
+                           saved=saved)
+
+
+@app.route('/buyer/profile', methods=['GET', 'POST'])
+def buyer_profile():
+    buyer = get_current_buyer()
+    if not buyer:
+        return redirect(url_for('buyer_login'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        current_pw  = request.form.get('current_password', '')
+        new_pw      = request.form.get('new_password', '')
+
+        if name:
+            buyer.name = name
+        if current_pw and new_pw:
+            if buyer.check_password(current_pw):
+                buyer.set_password(new_pw)
+                flash('Password updated successfully.', 'success')
+            else:
+                flash('Current password is incorrect.', 'danger')
+                return render_template('buyer/profile.html', buyer=buyer)
+
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+        return redirect(url_for('buyer_profile'))
+
+    return render_template('buyer/profile.html', buyer=buyer)
+
+
+@app.route('/buyer/save/<int:product_id>', methods=['POST'])
+def buyer_save_product(product_id):
+    buyer = get_current_buyer()
+    if not buyer:
+        flash('Please login to save products.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    already = SavedProduct.query.filter_by(
+        buyer_id=buyer.id, product_id=product_id).first()
+    if already:
+        db.session.delete(already)
+        db.session.commit()
+        flash('Product removed from saved items.', 'info')
+    else:
+        saved = SavedProduct(buyer_id=buyer.id, product_id=product_id)
+        db.session.add(saved)
+        db.session.commit()
+        flash('Product saved successfully!', 'success')
+
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/buyer/history')
+def buyer_history():
+    buyer = get_current_buyer()
+    if not buyer:
+        return redirect(url_for('buyer_login'))
+    page = request.args.get('page', 1, type=int)
+    logs = QueryLog.query.filter_by(buyer_id=buyer.id)\
+                         .order_by(QueryLog.queried_at.desc())\
+                         .paginate(page=page, per_page=15)
+    return render_template('buyer/history.html', buyer=buyer, logs=logs)
+
+
+@app.route('/buyer/saved')
+def buyer_saved():
+    buyer = get_current_buyer()
+    if not buyer:
+        return redirect(url_for('buyer_login'))
+    saved = SavedProduct.query.filter_by(buyer_id=buyer.id)\
+                              .order_by(SavedProduct.saved_at.desc()).all()
+    return render_template('buyer/saved.html', buyer=buyer, saved=saved)
 
 # ── REST API ──────────────────────────────────────────────────────────────────
 

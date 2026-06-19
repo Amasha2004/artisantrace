@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Saved Products — ArtisanTrace{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('buyer_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h3 class="fw-bold mb-0">Saved Products</h3>
+      <p class="text-muted small mb-0">{{ saved|length }} product{{ 's' if saved|length != 1 }} saved</p>
+    </div>
+  </div>
+
+  {% if saved %}
+  <div class="row g-4">
+    {% for s in saved %}
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+        <img src="{{ s.product.image1_url }}" style="height:180px;object-fit:cover;" alt="{{ s.product.name }}">
+        <div class="card-body">
+          <span class="badge-code">{{ s.product.product_code }}</span>
+          <h6 class="fw-bold mt-2 mb-1">{{ s.product.name }}</h6>
+          <p class="text-muted small mb-1">{{ s.product.artisan_name }} · {{ s.product.origin }}</p>
+          <p class="fw-bold mb-3" style="color:var(--teal)">¥{{ '%.2f'|format(s.product.price) }}</p>
+          <div class="d-flex gap-2">
+            <a href="{{ url_for('public_query_result', code=s.product.product_code) }}"
+               class="btn btn-sm btn-teal flex-grow-1">View Details</a>
+            <form method="post" action="{{ url_for('buyer_save_product', product_id=s.product.id) }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                <i class="bi bi-bookmark-x"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-bookmark-heart fs-1 text-muted"></i>
+    <p class="text-muted mt-3">No saved products yet.</p>
+    <a href="{{ url_for('browse') }}" class="btn btn-teal">Browse Products</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -52,7 +52,23 @@
         <tr><td>Price</td><td class="fw-bold" style="color:var(--teal)">¥{{ '%.2f'|format(product.price) }}</td></tr>
         <tr><td>Filed On</td><td>{{ product.filed_at.strftime('%B %d, %Y at %H:%M UTC') }}</td></tr>
         <tr><td>Total Queries</td><td>{{ product.query_count }} times</td></tr>
+        <tr><td>Queried By</td>
+          <td>{{ buyer.name if buyer else 'Anonymous' }}</td></tr>
       </table>
+
+      <!-- Save button for logged-in buyers -->
+       {% if buyer %}
+       <form method="post" action="{{ url_for('buyer_save_product', product_id=product.id) }}" class="mb-3">
+        <button type="submit" class="btn {% if is_saved %}btn-warning{% else %}btn-outline-secondary{% endif %}">
+          <i class="bi bi-bookmark{% if is_saved %}-fill{% endif %} me-1"></i>
+          {% if is_saved %}Saved{% else %}Save Product{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <p class="text-muted small mb-3">
+        <a href="{{ url_for('buyer_login') }}" style="color:var(--teal)">Login as buyer</a> to save this product
+      </p>
+      {% endif %}
 
       <!-- QR Code -->
       {% if product.qr_url %}

@@ -73,6 +73,24 @@
           <a class="btn btn-sm btn-teal px-3" href="{{ url_for('admin_login') }}">Admin Login</a>
         </li>
         {% endif %}
+      {% if session['buyer_id'] is defined and session['buyer_id'] %}
+      <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('buyer_dashboard') }}">
+          <i class="bi bi-person-circle"></i> My Account
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-danger" href="{{ url_for('buyer_logout') }}">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </li>
+      {% else %}
+      <li class="nav-item ms-1">
+        <a class="btn btn-sm btn-outline-light px-3" href="{{ url_for('buyer_login') }}">
+          <i class="bi bi-person me-1"></i>Buyer Login
+        </a>
+      </li>
+      {% endif %}
       </ul>
     </div>
   </div>
